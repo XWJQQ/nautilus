@@ -812,7 +812,7 @@ on_click_pressed (GtkGestureClick *gesture,
          * followed by a secondary click to open the menu.
          * When holding Ctrl and Shift, GtkGridView does a good job, let's not
          * interfere in that case. */
-        if (!selection_mode)
+        if (!selection_mode && button != GDK_BUTTON_PRIMARY)
         {
             GtkSelectionModel *selection_model = GTK_SELECTION_MODEL (self->model);
             NautilusViewItemModel *item_model;
