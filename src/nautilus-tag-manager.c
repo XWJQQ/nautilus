@@ -49,6 +49,8 @@ struct _NautilusTagManager
 
 G_DEFINE_TYPE (NautilusTagManager, nautilus_tag_manager, G_TYPE_OBJECT);
 
+static NautilusTagManager *tag_manager = NULL;
+
 typedef struct
 {
     NautilusTagManager *tag_manager;
@@ -566,20 +568,13 @@ nautilus_tag_manager_class_init (NautilusTagManagerClass *klass)
 }
 
 /**
- * nautilus_tag_manager_get:
- *
- * Gets a reference to the tag manager.
- *
- * If used to initialize a struct field, make sure to release on finalization.
- * If used to initialize a local variable, make sure to use g_autoptr().
+ * nautilus_tag_manager_new:
  *
  * Returns: (transfer full): the #NautilusTagManager singleton object.
  */
 NautilusTagManager *
-nautilus_tag_manager_get (void)
+nautilus_tag_manager_new (void)
 {
-    static NautilusTagManager *tag_manager = NULL;
-
     if (tag_manager != NULL)
     {
         return g_object_ref (tag_manager);
@@ -588,6 +583,17 @@ nautilus_tag_manager_get (void)
     tag_manager = g_object_new (NAUTILUS_TYPE_TAG_MANAGER, NULL);
     g_object_add_weak_pointer (G_OBJECT (tag_manager), (gpointer) & tag_manager);
 
+    return tag_manager;
+}
+
+/**
+ * nautilus_tag_manager_get:
+ *
+ * Returns: (transfer none): the #NautilusTagManager singleton object.
+ */
+NautilusTagManager *
+nautilus_tag_manager_get (void)
+{
     return tag_manager;
 }
 
