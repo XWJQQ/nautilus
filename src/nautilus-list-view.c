@@ -22,6 +22,9 @@
 
 #define GUTTER_WIDTH 12
 
+/* We wait two seconds after row is collapsed to unload the subdirectory */
+#define COLLAPSE_TO_UNLOAD_DELAY 2
+
 struct _NautilusListView
 {
     NautilusFilesModelView parent_instance;
@@ -51,6 +54,10 @@ G_DEFINE_TYPE (NautilusListView, nautilus_list_view, NAUTILUS_TYPE_FILES_MODEL_V
 static void on_sorter_changed (GtkSorter      *sorter,
                                GtkSorterChange change,
                                gpointer        user_data);
+
+static void on_row_expanded_changed (GObject    *gobject,
+                                     GParamSpec *pspec,
+                                     gpointer    user_data);
 
 static const char *default_columns_for_recent[] =
 {
@@ -933,16 +940,24 @@ bind_item_ui (GtkSignalListItemFactory *factory,
               gpointer                  user_data)
 {
     NautilusListView *self = NAUTILUS_LIST_VIEW (user_data);
+    GtkTreeExpander *expander;
     NautilusListViewItemUi *item_ui;
+    GtkTreeListRow *row;
     NautilusViewItemModel *item_model;
     GtkWidget *row_widget;
 
-    item_ui = NAUTILUS_LIST_VIEW_ITEM_UI (gtk_list_item_get_child (listitem));
+    expander = GTK_TREE_EXPANDER (gtk_list_item_get_child (listitem));
+    item_ui = NAUTILUS_LIST_VIEW_ITEM_UI (gtk_tree_expander_get_child (expander));
+    row = gtk_list_item_get_item (listitem);
     item_model = listitem_get_view_item (listitem);
     g_return_if_fail (item_model != NULL);
 
+    gtk_tree_expander_set_list_row (expander, row);
     nautilus_list_view_item_ui_set_model (item_ui, item_model);
     nautilus_view_item_model_set_item_ui (item_model, GTK_WIDGET (item_ui));
+
+    g_signal_connect_object (row, "notify::expanded",
+                             G_CALLBACK (on_row_expanded_changed), self, 0);
 
     row_widget = list_item_get_row_widget (listitem);
     g_object_set_data (G_OBJECT (row_widget), "nautilus-view-model-item", item_model);
@@ -979,12 +994,20 @@ unbind_item_ui (GtkSignalListItemFactory *factory,
                 GtkListItem              *listitem,
                 gpointer                  user_data)
 {
+    NautilusListView *self = NAUTILUS_LIST_VIEW (user_data);
+    GtkTreeExpander *expander;
     NautilusListViewItemUi *item_ui;
+    GtkTreeListRow *row;
     NautilusViewItemModel *item_model;
 
-    item_ui = NAUTILUS_LIST_VIEW_ITEM_UI (gtk_list_item_get_child (listitem));
+    expander = GTK_TREE_EXPANDER (gtk_list_item_get_child (listitem));
+    item_ui = NAUTILUS_LIST_VIEW_ITEM_UI (gtk_tree_expander_get_child (expander));
+    row = gtk_list_item_get_item (listitem);
     item_model = listitem_get_view_item (listitem);
 
+    g_signal_handlers_disconnect_by_func (row, on_row_expanded_changed, self);
+
+    gtk_tree_expander_set_list_row (expander, NULL);
     nautilus_list_view_item_ui_set_model (item_ui, NULL);
 
     /* item may be NULL when row has just been destroyed. */
@@ -1004,6 +1027,7 @@ setup_item_ui (GtkSignalListItemFactory *factory,
                gpointer                  user_data)
 {
     NautilusListView *self = NAUTILUS_LIST_VIEW (user_data);
+    GtkWidget *expander;
     NautilusListViewItemUi *item_ui;
 
     item_ui = nautilus_list_view_item_ui_new ();
@@ -1014,7 +1038,13 @@ setup_item_ui (GtkSignalListItemFactory *factory,
     {
         nautilus_list_view_item_ui_show_snippet (item_ui);
     }
-    gtk_list_item_set_child (listitem, GTK_WIDGET (item_ui));
+
+    expander = gtk_tree_expander_new ();
+    gtk_tree_expander_set_indent_for_icon (GTK_TREE_EXPANDER (expander),
+                                           self->expand_as_a_tree);
+    gtk_tree_expander_set_child (GTK_TREE_EXPANDER (expander),
+                                 GTK_WIDGET (item_ui));
+    gtk_list_item_set_child (listitem, expander);
 
     /* The built-in activation doesn't fit all our needs and might get in the
      * way, e.g. by claiming click gesture events, so keep it disabled. */
@@ -1306,11 +1336,18 @@ static void
 real_begin_loading (NautilusFilesView *files_view)
 {
     NautilusListView *self = NAUTILUS_LIST_VIEW (files_view);
+    NautilusViewModel *model;
     NautilusFile *file;
 
     NAUTILUS_FILES_VIEW_CLASS (nautilus_list_view_parent_class)->begin_loading (files_view);
 
     update_columns_settings_from_metadata_and_preferences (self);
+
+    /* TODO Reload the view if this setting changes. We can't easily switch
+     * tree mode on/off on an already loaded view and the preference is not
+     * expected to be changed frequently. */
+    self->expand_as_a_tree = g_settings_get_boolean (nautilus_list_view_preferences,
+                                                     NAUTILUS_PREFERENCES_LIST_VIEW_USE_TREE);
 
     self->path_attribute_q = 0;
     g_clear_object (&self->file_path_base_location);
@@ -1326,7 +1363,21 @@ real_begin_loading (NautilusFilesView *files_view)
     {
         self->path_attribute_q = g_quark_from_string ("where");
         self->file_path_base_location = get_base_location (self);
+
+        /* Forcefully disabling tree in these special locations because this
+         * view and its model currently don't expect the same file appearing
+         * more than once.
+         *
+         * NautilusFilesView still has support for the same file being present
+         * in multiple directories (struct FileAndDirectory), so, if someone
+         * cares enough about expanding folders in these special locations:
+         * TODO: Making the model items aware of their current model instead of
+         * relying on `nautilus_file_get_parent()`. */
+        self->expand_as_a_tree = FALSE;
     }
+
+    model = nautilus_files_model_view_get_model (NAUTILUS_FILES_MODEL_VIEW (self));
+    nautilus_view_model_expand_as_a_tree (model, self->expand_as_a_tree);
 }
 
 static void
@@ -1463,6 +1514,114 @@ static void
 finalize (GObject *object)
 {
     G_OBJECT_CLASS (nautilus_list_view_parent_class)->finalize (object);
+}
+
+typedef struct
+{
+    NautilusListView *self;
+    NautilusViewItemModel *item;
+    NautilusDirectory *directory;
+} UnloadDelayData;
+
+static void
+unload_delay_data_free (UnloadDelayData *unload_data)
+{
+    g_clear_weak_pointer (&unload_data->self);
+    g_clear_object (&unload_data->item);
+    g_clear_object (&unload_data->directory);
+
+    g_free (unload_data);
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (UnloadDelayData, unload_delay_data_free)
+
+static UnloadDelayData *
+unload_delay_data_new (NautilusListView      *self,
+                       NautilusViewItemModel *item,
+                       NautilusDirectory     *directory)
+{
+    UnloadDelayData *unload_data;
+
+    unload_data = g_new0 (UnloadDelayData, 1);
+    g_set_weak_pointer (&unload_data->self, self);
+    g_set_object (&unload_data->item, item);
+    g_set_object (&unload_data->directory, directory);
+
+    return unload_data;
+}
+
+static gboolean
+unload_file_timeout (gpointer data)
+{
+    g_autoptr (UnloadDelayData) unload_data = data;
+    NautilusListView *self = unload_data->self;
+    NautilusViewModel *model = nautilus_files_model_view_get_model (NAUTILUS_FILES_MODEL_VIEW (self));
+    if (unload_data->self == NULL)
+    {
+        return G_SOURCE_REMOVE;
+    }
+
+    for (guint i = 0; i < g_list_model_get_n_items (G_LIST_MODEL (model)); i++)
+    {
+        g_autoptr (GtkTreeListRow) row = g_list_model_get_item (G_LIST_MODEL (model), i);
+        g_autoptr (NautilusViewItemModel) item = gtk_tree_list_row_get_item (row);
+        if (item != NULL && item == unload_data->item)
+        {
+            if (gtk_tree_list_row_get_expanded (row))
+            {
+                /* It has been expanded again before the timeout. Do nothing. */
+                return G_SOURCE_REMOVE;
+            }
+            break;
+        }
+    }
+
+    if (nautilus_files_view_has_subdirectory (NAUTILUS_FILES_VIEW (self),
+                                              unload_data->directory))
+    {
+        nautilus_files_view_remove_subdirectory (NAUTILUS_FILES_VIEW (self),
+                                                 unload_data->directory);
+    }
+
+    /* The model holds a GListStore for every subdirectory. Empty it. */
+    nautilus_view_model_clear_subdirectory (model, unload_data->item);
+
+    return G_SOURCE_REMOVE;
+}
+
+static void
+on_row_expanded_changed (GObject    *gobject,
+                         GParamSpec *pspec,
+                         gpointer    user_data)
+{
+    GtkTreeListRow *row = GTK_TREE_LIST_ROW (gobject);
+    NautilusListView *self = NAUTILUS_LIST_VIEW (user_data);
+    NautilusViewItemModel *item_model;
+    g_autoptr (NautilusDirectory) directory = NULL;
+    gboolean expanded;
+
+    item_model = NAUTILUS_VIEW_ITEM_MODEL (gtk_tree_list_row_get_item (row));
+    if (item_model == NULL)
+    {
+        /* Row has been destroyed. */
+        return;
+    }
+
+    directory = nautilus_directory_get_for_file (nautilus_view_item_model_get_file (item_model));
+    expanded = gtk_tree_list_row_get_expanded (row);
+    if (expanded)
+    {
+        if (!nautilus_files_view_has_subdirectory (NAUTILUS_FILES_VIEW (self), directory))
+        {
+            nautilus_files_view_add_subdirectory (NAUTILUS_FILES_VIEW (self), directory);
+        }
+    }
+    else
+    {
+        g_timeout_add_seconds (COLLAPSE_TO_UNLOAD_DELAY,
+                               unload_file_timeout,
+                               unload_delay_data_new (self, item_model, directory));
+    }
 }
 
 static void
