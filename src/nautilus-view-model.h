@@ -14,6 +14,7 @@ NautilusViewModel * nautilus_view_model_new (void);
 
 void nautilus_view_model_set_sorter (NautilusViewModel *self,
                                      GtkSorter         *sorter);
+void nautilus_view_model_sort (NautilusViewModel *self);
 NautilusViewItemModel * nautilus_view_model_get_item_from_file (NautilusViewModel *self,
                                                                 NautilusFile      *file);
 GQueue * nautilus_view_model_get_items_from_files (NautilusViewModel *self,
