@@ -6,6 +6,7 @@ struct _NautilusViewItemModel
     GObject parent_instance;
     guint icon_size;
     gboolean is_cut;
+    gboolean is_loading;
     NautilusFile *file;
     GtkWidget *item_ui;
 };
@@ -18,6 +19,7 @@ enum
     PROP_FILE,
     PROP_ICON_SIZE,
     PROP_IS_CUT,
+    PROP_IS_LOADING,
     PROP_ITEM_UI,
     N_PROPS
 };
@@ -78,6 +80,12 @@ nautilus_view_item_model_get_property (GObject    *object,
         }
         break;
 
+        case PROP_IS_LOADING:
+        {
+            g_value_set_boolean (value, self->is_loading);
+        }
+        break;
+
         case PROP_ITEM_UI:
         {
             g_value_set_object (value, self->item_ui);
@@ -116,6 +124,12 @@ nautilus_view_item_model_set_property (GObject      *object,
         case PROP_IS_CUT:
         {
             self->is_cut = g_value_get_boolean (value);
+        }
+        break;
+
+        case PROP_IS_LOADING:
+        {
+            self->is_loading = g_value_get_boolean (value);
         }
         break;
 
@@ -159,6 +173,12 @@ nautilus_view_item_model_class_init (NautilusViewItemModelClass *klass)
     g_object_class_install_property (object_class,
                                      PROP_IS_CUT,
                                      g_param_spec_boolean ("is-cut",
+                                                           "", "",
+                                                           FALSE,
+                                                           G_PARAM_READWRITE));
+    g_object_class_install_property (object_class,
+                                     PROP_IS_LOADING,
+                                     g_param_spec_boolean ("is-loading",
                                                            "", "",
                                                            FALSE,
                                                            G_PARAM_READWRITE));
@@ -221,6 +241,15 @@ nautilus_view_item_model_set_cut (NautilusViewItemModel *self,
     g_return_if_fail (NAUTILUS_IS_VIEW_ITEM_MODEL (self));
 
     g_object_set (self, "is-cut", is_cut, NULL);
+}
+
+void
+nautilus_view_item_model_set_loading (NautilusViewItemModel *self,
+                                      gboolean               loading)
+{
+    g_return_if_fail (NAUTILUS_IS_VIEW_ITEM_MODEL (self));
+
+    g_object_set (self, "is-loading", loading, NULL);
 }
 
 NautilusFile *

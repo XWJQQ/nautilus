@@ -4,6 +4,8 @@
 #include "nautilus-file-utilities.h"
 #include "nautilus-thumbnails.h"
 
+#define LOADING_TIMEOUT_SECONDS 1
+
 struct _NautilusListViewItemUi
 {
     GtkBox parent_instance;
@@ -13,6 +15,7 @@ struct _NautilusListViewItemUi
     GFile *file_path_base_location;
 
     GtkWidget *fixed_height_box;
+    GtkWidget *spinner;
     GtkWidget *icon;
     GtkWidget *label;
     GtkWidget *snippet;
@@ -20,6 +23,7 @@ struct _NautilusListViewItemUi
 
     gboolean show_snippet;
     gboolean called_once;
+    guint loading_timeout_id;
 };
 
 G_DEFINE_TYPE (NautilusListViewItemUi, nautilus_list_view_item_ui, GTK_TYPE_BOX)
@@ -198,6 +202,15 @@ set_model (NautilusListViewItemUi *self,
            NautilusViewItemModel  *model);
 
 static void
+dispose (GObject *object)
+{
+    NautilusListViewItemUi *self = (NautilusListViewItemUi *) object;
+
+    g_clear_handle_id (&self->loading_timeout_id, g_source_remove);
+    G_OBJECT_CLASS (nautilus_list_view_item_ui_parent_class)->dispose (object);
+}
+
+static void
 finalize (GObject *object)
 {
     NautilusListViewItemUi *self = (NautilusListViewItemUi *) object;
@@ -246,6 +259,50 @@ on_view_item_is_cut_changed (GObject    *object,
     }
 }
 
+static gboolean
+on_loading_timeout (gpointer user_data)
+{
+    NautilusListViewItemUi *self = NAUTILUS_LIST_VIEW_ITEM_UI (user_data);
+    gboolean is_loading;
+
+    g_object_get (self->model, "is-loading", &is_loading, NULL);
+    if (is_loading)
+    {
+        gtk_widget_show (self->spinner);
+        gtk_spinner_start (GTK_SPINNER (self->spinner));
+    }
+
+    return G_SOURCE_REMOVE;
+}
+
+static void
+on_view_item_is_loading_changed (GObject    *object,
+                                 GParamSpec *pspec,
+                                 gpointer    user_data)
+{
+    NautilusListViewItemUi *self = NAUTILUS_LIST_VIEW_ITEM_UI (user_data);
+    gboolean is_loading;
+
+    if (object != G_OBJECT (self->model))
+    {
+        return;
+    }
+
+    g_clear_handle_id (&self->loading_timeout_id, g_source_remove);
+    g_object_get (object, "is-loading", &is_loading, NULL);
+    if (is_loading)
+    {
+        self->loading_timeout_id = g_timeout_add_seconds (LOADING_TIMEOUT_SECONDS,
+                                                          G_SOURCE_FUNC (on_loading_timeout),
+                                                          self);
+    }
+    else
+    {
+        gtk_widget_hide (self->spinner);
+        gtk_spinner_stop (GTK_SPINNER (self->spinner));
+    }
+}
+
 static void
 set_model (NautilusListViewItemUi *self,
            NautilusViewItemModel  *model)
@@ -281,6 +338,8 @@ set_model (NautilusListViewItemUi *self,
                       (GCallback) on_view_item_size_changed, self);
     g_signal_connect (self->model, "notify::is-cut",
                       (GCallback) on_view_item_is_cut_changed, self);
+    g_signal_connect (self->model, "notify::is-loading",
+                      (GCallback) on_view_item_is_loading_changed, self);
     g_signal_connect_swapped (self->model, "file-changed",
                               (GCallback) on_file_changed, self);
 }
@@ -312,6 +371,7 @@ nautilus_list_view_item_ui_class_init (NautilusListViewItemUiClass *klass)
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
+    object_class->dispose = dispose;
     object_class->finalize = finalize;
     object_class->get_property = get_property;
     object_class->set_property = set_property;
@@ -327,6 +387,7 @@ nautilus_list_view_item_ui_class_init (NautilusListViewItemUiClass *klass)
     gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/nautilus/ui/nautilus-list-view-item-ui.ui");
 
     gtk_widget_class_bind_template_child (widget_class, NautilusListViewItemUi, fixed_height_box);
+    gtk_widget_class_bind_template_child (widget_class, NautilusListViewItemUi, spinner);
     gtk_widget_class_bind_template_child (widget_class, NautilusListViewItemUi, icon);
     gtk_widget_class_bind_template_child (widget_class, NautilusListViewItemUi, label);
     gtk_widget_class_bind_template_child (widget_class, NautilusListViewItemUi, snippet);
