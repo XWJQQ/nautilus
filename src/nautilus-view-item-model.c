@@ -152,7 +152,7 @@ nautilus_view_item_model_class_init (NautilusViewItemModelClass *klass)
                                      g_param_spec_int ("icon-size",
                                                        "Icon size",
                                                        "The size in pixels of the icon",
-                                                       NAUTILUS_GRID_ICON_SIZE_SMALL,
+                                                       NAUTILUS_LIST_ICON_SIZE_SMALL,
                                                        NAUTILUS_GRID_ICON_SIZE_LARGEST,
                                                        NAUTILUS_GRID_ICON_SIZE_LARGE,
                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
