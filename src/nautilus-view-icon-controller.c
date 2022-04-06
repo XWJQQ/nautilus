@@ -38,6 +38,25 @@ struct _NautilusViewIconController
 
 G_DEFINE_TYPE (NautilusViewIconController, nautilus_view_icon_controller, NAUTILUS_TYPE_FILES_VIEW)
 
+static inline NautilusViewItemModel *
+model_get_item (GListModel *model,
+                guint       position)
+{
+    g_autoptr (GtkTreeListRow) row = g_list_model_get_item (model, position);
+
+    g_return_val_if_fail (GTK_IS_TREE_LIST_ROW (row), NULL);
+    return NAUTILUS_VIEW_ITEM_MODEL (gtk_tree_list_row_get_item (GTK_TREE_LIST_ROW (row)));
+}
+
+static inline NautilusViewItemModel *
+listitem_get_item (GtkListItem *listitem)
+{
+    GtkTreeListRow *row = gtk_list_item_get_item (listitem);
+
+    g_return_val_if_fail (GTK_IS_TREE_LIST_ROW (row), NULL);
+    return NAUTILUS_VIEW_ITEM_MODEL (gtk_tree_list_row_get_item (GTK_TREE_LIST_ROW (row)));
+}
+
 typedef struct
 {
     const NautilusFileSortType sort_type;
@@ -311,7 +330,7 @@ real_get_selection (NautilusFilesView *files_view)
     {
         g_autoptr (NautilusViewItemModel) item_model = NULL;
 
-        item_model = g_list_model_get_item (G_LIST_MODEL (selection), i);
+        item_model = model_get_item (G_LIST_MODEL (selection), i);
         selected_files = g_list_prepend (selected_files,
                                          g_object_ref (nautilus_view_item_model_get_file (item_model)));
     }
@@ -618,7 +637,7 @@ set_icon_size (NautilusViewIconController *self,
     {
         g_autoptr (NautilusViewItemModel) current_item_model = NULL;
 
-        current_item_model = g_list_model_get_item (G_LIST_MODEL (self->model), i);
+        current_item_model = model_get_item (G_LIST_MODEL (self->model), i);
         nautilus_view_item_model_set_icon_size (current_item_model,
                                                 get_icon_size_for_zoom_level (self->zoom_level));
     }
@@ -709,8 +728,7 @@ real_compute_rename_popover_pointing_to (NautilusFilesView *files_view)
     GtkWidget *item_ui;
 
     /* We only allow one item to be renamed with a popover */
-    item = g_list_model_get_item (G_LIST_MODEL (self->model),
-                                  get_first_selected_item (self));
+    item = model_get_item (G_LIST_MODEL (self->model), get_first_selected_item (self));
     item_ui = nautilus_view_item_model_get_item_ui (item);
     g_return_val_if_fail (item_ui != NULL, NULL);
 
@@ -738,7 +756,7 @@ real_reveal_for_selection_context_menu (NautilusFilesView *files_view)
     {
         g_autoptr (NautilusViewItemModel) item = NULL;
 
-        item = g_list_model_get_item (G_LIST_MODEL (selection), i);
+        item = model_get_item (G_LIST_MODEL (selection), i);
         item_ui = nautilus_view_item_model_get_item_ui (item);
         if (item_ui != NULL && gtk_widget_get_parent (item_ui) == focus_child)
         {
@@ -1030,7 +1048,7 @@ get_first_visible_item (NautilusViewIconController *self)
         g_autoptr (NautilusViewItemModel) item = NULL;
         GtkWidget *item_ui;
 
-        item = g_list_model_get_item (G_LIST_MODEL (self->model), i);
+        item = model_get_item (G_LIST_MODEL (self->model), i);
         item_ui = nautilus_view_item_model_get_item_ui (item);
         if (item_ui != NULL)
         {
@@ -1059,7 +1077,7 @@ real_get_first_visible_file (NautilusFilesView *files_view)
     i = get_first_visible_item (self);
     if (i < G_MAXUINT)
     {
-        item = g_list_model_get_item (G_LIST_MODEL (self->model), i);
+        item = model_get_item (G_LIST_MODEL (self->model), i);
         uri = nautilus_file_get_uri (nautilus_view_item_model_get_file (item));
     }
     return uri;
@@ -1204,7 +1222,7 @@ real_select_first (NautilusFilesView *files_view)
     NautilusFile *file;
     g_autoptr (GList) selection = NULL;
 
-    item = NAUTILUS_VIEW_ITEM_MODEL (g_list_model_get_item (G_LIST_MODEL (self->model), 0));
+    item = model_get_item (G_LIST_MODEL (self->model), 0);
     if (item == NULL)
     {
         return;
@@ -1315,7 +1333,7 @@ prioritize_thumbnailing_on_idle (NautilusViewIconController *self)
         return G_SOURCE_REMOVE;
     }
 
-    first_item = g_list_model_get_item (G_LIST_MODEL (self->model), first_index);
+    first_item = model_get_item (G_LIST_MODEL (self->model), first_index);
 
     first_visible_child = nautilus_view_item_model_get_item_ui (first_item);
 
@@ -1323,7 +1341,7 @@ prioritize_thumbnailing_on_idle (NautilusViewIconController *self)
     {
         g_autoptr (NautilusViewItemModel) next_item = NULL;
 
-        next_item = g_list_model_get_item (G_LIST_MODEL (self->model), next_index);
+        next_item = model_get_item (G_LIST_MODEL (self->model), next_index);
         next_child = nautilus_view_item_model_get_item_ui (next_item);
         if (next_child == NULL)
         {
@@ -1345,7 +1363,7 @@ prioritize_thumbnailing_on_idle (NautilusViewIconController *self)
     {
         g_autoptr (NautilusViewItemModel) item = NULL;
 
-        item = g_list_model_get_item (G_LIST_MODEL (self->model), last_index - i);
+        item = model_get_item (G_LIST_MODEL (self->model), last_index - i);
         g_return_val_if_fail (item != NULL, G_SOURCE_REMOVE);
 
         file = nautilus_view_item_model_get_file (NAUTILUS_VIEW_ITEM_MODEL (item));
@@ -1383,7 +1401,8 @@ bind_item_ui (GtkSignalListItemFactory *factory,
     NautilusViewItemModel *item_model;
 
     item_ui = gtk_list_item_get_child (listitem);
-    item_model = NAUTILUS_VIEW_ITEM_MODEL (gtk_list_item_get_item (listitem));
+    item_model = listitem_get_item (listitem);
+    g_return_if_fail (item_model != NULL);
 
     nautilus_view_icon_item_ui_set_model (NAUTILUS_VIEW_ICON_ITEM_UI (item_ui),
                                           item_model);
@@ -1415,10 +1434,14 @@ unbind_item_ui (GtkSignalListItemFactory *factory,
     NautilusViewItemModel *item_model;
 
     item_ui = NAUTILUS_VIEW_ICON_ITEM_UI (gtk_list_item_get_child (listitem));
-    item_model = NAUTILUS_VIEW_ITEM_MODEL (gtk_list_item_get_item (listitem));
+    item_model = listitem_get_item (listitem);
 
     nautilus_view_icon_item_ui_set_model (item_ui, NULL);
-    nautilus_view_item_model_set_item_ui (item_model, NULL);
+    /* item may be NULL when row has just been destroyed. */
+    if (item_model != NULL)
+    {
+        nautilus_view_item_model_set_item_ui (item_model, NULL);
+    }
 }
 
 static void
