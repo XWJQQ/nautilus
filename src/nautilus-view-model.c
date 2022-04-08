@@ -205,10 +205,7 @@ get_property (GObject    *object,
     {
         case PROP_SORTER:
         {
-            GtkTreeListRowSorter *row_sorter;
-
-            row_sorter = GTK_TREE_LIST_ROW_SORTER (gtk_sort_list_model_get_sorter (self->sort_model));
-            g_value_set_object (value, gtk_tree_list_row_sorter_get_sorter (row_sorter));
+            g_value_set_object (value, nautilus_view_model_get_sorter (self));
         }
         break;
 
@@ -321,6 +318,15 @@ NautilusViewModel *
 nautilus_view_model_new ()
 {
     return g_object_new (NAUTILUS_TYPE_VIEW_MODEL, NULL);
+}
+
+GtkSorter *
+nautilus_view_model_get_sorter (NautilusViewModel *self)
+{
+    GtkTreeListRowSorter *row_sorter;
+
+    row_sorter = GTK_TREE_LIST_ROW_SORTER (gtk_sort_list_model_get_sorter (self->sort_model));
+    return row_sorter != NULL ? gtk_tree_list_row_sorter_get_sorter (row_sorter) : NULL;
 }
 
 void
