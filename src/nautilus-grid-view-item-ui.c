@@ -1,9 +1,9 @@
-#include "nautilus-view-icon-item-ui.h"
+#include "nautilus-grid-view-item-ui.h"
 #include "nautilus-view-item-model.h"
 #include "nautilus-file.h"
 #include "nautilus-thumbnails.h"
 
-struct _NautilusViewIconItemUi
+struct _NautilusGridViewItemUi
 {
     GtkBox parent_instance;
 
@@ -20,7 +20,7 @@ struct _NautilusViewIconItemUi
     gboolean called_once;
 };
 
-G_DEFINE_TYPE (NautilusViewIconItemUi, nautilus_view_icon_item_ui, GTK_TYPE_BOX)
+G_DEFINE_TYPE (NautilusGridViewItemUi, nautilus_grid_view_item_ui, GTK_TYPE_BOX)
 
 enum
 {
@@ -32,7 +32,7 @@ enum
 #define EXTRA_WIDTH_FOR_TEXT 36
 
 static void
-update_icon (NautilusViewIconItemUi *self)
+update_icon (NautilusGridViewItemUi *self)
 {
     NautilusFileIconFlags flags;
     g_autoptr (GdkPaintable) icon_paintable = NULL;
@@ -74,7 +74,7 @@ update_icon (NautilusViewIconItemUi *self)
 }
 
 static void
-update_captions (NautilusViewIconItemUi *self)
+update_captions (NautilusGridViewItemUi *self)
 {
     NautilusFile *file;
     GtkWidget * const caption_labels[] =
@@ -103,7 +103,7 @@ update_captions (NautilusViewIconItemUi *self)
 }
 
 static void
-on_file_changed (NautilusViewIconItemUi *self)
+on_file_changed (NautilusGridViewItemUi *self)
 {
     NautilusFile *file;
 
@@ -121,7 +121,7 @@ on_view_item_size_changed (GObject    *object,
                            GParamSpec *pspec,
                            gpointer    user_data)
 {
-    NautilusViewIconItemUi *self = NAUTILUS_VIEW_ICON_ITEM_UI (user_data);
+    NautilusGridViewItemUi *self = NAUTILUS_GRID_VIEW_ITEM_UI (user_data);
 
     update_icon (self);
     update_captions (self);
@@ -132,7 +132,7 @@ on_view_item_is_cut_changed (GObject    *object,
                              GParamSpec *pspec,
                              gpointer    user_data)
 {
-    NautilusViewIconItemUi *self = NAUTILUS_VIEW_ICON_ITEM_UI (user_data);
+    NautilusGridViewItemUi *self = NAUTILUS_GRID_VIEW_ITEM_UI (user_data);
     gboolean is_cut;
 
     g_object_get (object, "is-cut", &is_cut, NULL);
@@ -147,16 +147,16 @@ on_view_item_is_cut_changed (GObject    *object,
 }
 
 static void
-set_model (NautilusViewIconItemUi *self,
+set_model (NautilusGridViewItemUi *self,
            NautilusViewItemModel  *model);
 
 static void
 finalize (GObject *object)
 {
-    NautilusViewIconItemUi *self = (NautilusViewIconItemUi *) object;
+    NautilusGridViewItemUi *self = (NautilusGridViewItemUi *) object;
 
     set_model (self, NULL);
-    G_OBJECT_CLASS (nautilus_view_icon_item_ui_parent_class)->finalize (object);
+    G_OBJECT_CLASS (nautilus_grid_view_item_ui_parent_class)->finalize (object);
 }
 
 static void
@@ -165,7 +165,7 @@ get_property (GObject    *object,
               GValue     *value,
               GParamSpec *pspec)
 {
-    NautilusViewIconItemUi *self = NAUTILUS_VIEW_ICON_ITEM_UI (object);
+    NautilusGridViewItemUi *self = NAUTILUS_GRID_VIEW_ITEM_UI (object);
 
     switch (prop_id)
     {
@@ -181,7 +181,7 @@ get_property (GObject    *object,
 }
 
 static void
-set_model (NautilusViewIconItemUi *self,
+set_model (NautilusGridViewItemUi *self,
            NautilusViewItemModel  *model)
 {
     NautilusFile *file;
@@ -225,7 +225,7 @@ set_property (GObject      *object,
               const GValue *value,
               GParamSpec   *pspec)
 {
-    NautilusViewIconItemUi *self = NAUTILUS_VIEW_ICON_ITEM_UI (object);
+    NautilusGridViewItemUi *self = NAUTILUS_GRID_VIEW_ITEM_UI (object);
 
     switch (prop_id)
     {
@@ -241,7 +241,7 @@ set_property (GObject      *object,
 }
 
 static void
-nautilus_view_icon_item_ui_class_init (NautilusViewIconItemUiClass *klass)
+nautilus_grid_view_item_ui_class_init (NautilusGridViewItemUiClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
@@ -258,18 +258,18 @@ nautilus_view_icon_item_ui_class_init (NautilusViewIconItemUiClass *klass)
                                                           NAUTILUS_TYPE_VIEW_ITEM_MODEL,
                                                           G_PARAM_READWRITE));
 
-    gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/nautilus/ui/nautilus-view-icon-item-ui.ui");
+    gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/nautilus/ui/nautilus-grid-view-item-ui.ui");
 
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, fixed_height_box);
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, icon);
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, label);
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, first_caption);
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, second_caption);
-    gtk_widget_class_bind_template_child (widget_class, NautilusViewIconItemUi, third_caption);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, fixed_height_box);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, icon);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, label);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, first_caption);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, second_caption);
+    gtk_widget_class_bind_template_child (widget_class, NautilusGridViewItemUi, third_caption);
 }
 
 static void
-nautilus_view_icon_item_ui_init (NautilusViewIconItemUi *self)
+nautilus_grid_view_item_ui_init (NautilusGridViewItemUi *self)
 {
     gtk_widget_init_template (GTK_WIDGET (self));
 
@@ -287,21 +287,21 @@ nautilus_view_icon_item_ui_init (NautilusViewIconItemUi *self)
 #endif
 }
 
-NautilusViewIconItemUi *
-nautilus_view_icon_item_ui_new (void)
+NautilusGridViewItemUi *
+nautilus_grid_view_item_ui_new (void)
 {
-    return g_object_new (NAUTILUS_TYPE_VIEW_ICON_ITEM_UI, NULL);
+    return g_object_new (NAUTILUS_TYPE_GRID_VIEW_ITEM_UI, NULL);
 }
 
 void
-nautilus_view_icon_item_ui_set_model (NautilusViewIconItemUi *self,
+nautilus_grid_view_item_ui_set_model (NautilusGridViewItemUi *self,
                                       NautilusViewItemModel  *model)
 {
     g_object_set (self, "model", model, NULL);
 }
 
 NautilusViewItemModel *
-nautilus_view_icon_item_ui_get_model (NautilusViewIconItemUi *self)
+nautilus_grid_view_item_ui_get_model (NautilusGridViewItemUi *self)
 {
     NautilusViewItemModel *model = NULL;
 
@@ -311,14 +311,14 @@ nautilus_view_icon_item_ui_get_model (NautilusViewIconItemUi *self)
 }
 
 void
-nautilus_view_item_ui_set_caption_attributes (NautilusViewIconItemUi *self,
+nautilus_view_item_ui_set_caption_attributes (NautilusGridViewItemUi *self,
                                               GQuark                 *attrs)
 {
     self->caption_attributes = attrs;
 }
 
 gboolean
-nautilus_view_icon_item_ui_once (NautilusViewIconItemUi *self)
+nautilus_grid_view_item_ui_once (NautilusGridViewItemUi *self)
 {
     if (self->called_once)
     {

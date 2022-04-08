@@ -1,10 +1,10 @@
-#include "nautilus-view-icon-controller.h"
+#include "nautilus-grid-view.h"
 #include "nautilus-view-item-model.h"
-#include "nautilus-view-icon-item-ui.h"
+#include "nautilus-grid-view-item-ui.h"
 #include "nautilus-file.h"
 #include "nautilus-global-preferences.h"
 
-struct _NautilusViewIconController
+struct _NautilusGridView
 {
     NautilusFilesModelView parent_instance;
 
@@ -24,16 +24,16 @@ struct _NautilusViewIconController
     gboolean reversed;
 };
 
-G_DEFINE_TYPE (NautilusViewIconController, nautilus_view_icon_controller, NAUTILUS_TYPE_FILES_MODEL_VIEW)
+G_DEFINE_TYPE (NautilusGridView, nautilus_grid_view, NAUTILUS_TYPE_FILES_MODEL_VIEW)
 
 static guint get_icon_size_for_zoom_level (NautilusGridZoomLevel zoom_level);
 
 static gint
-nautilus_view_icon_controller_sort (gconstpointer a,
-                                    gconstpointer b,
-                                    gpointer      user_data)
+nautilus_grid_view_sort (gconstpointer a,
+                         gconstpointer b,
+                         gpointer      user_data)
 {
-    NautilusViewIconController *self = user_data;
+    NautilusGridView *self = user_data;
     NautilusFile *file_a;
     NautilusFile *file_b;
 
@@ -50,7 +50,7 @@ static void
 real_bump_zoom_level (NautilusFilesView *files_view,
                       int                zoom_increment)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_view);
     NautilusGridZoomLevel new_level;
 
     new_level = self->zoom_level + zoom_increment;
@@ -105,7 +105,7 @@ get_icon_size_for_zoom_level (NautilusGridZoomLevel zoom_level)
 static guint
 real_get_icon_size (NautilusFilesModelView *files_model_view)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_model_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_model_view);
 
     return get_icon_size_for_zoom_level (self->zoom_level);
 }
@@ -113,7 +113,7 @@ real_get_icon_size (NautilusFilesModelView *files_model_view)
 static GtkWidget *
 real_get_view_ui (NautilusFilesModelView *files_model_view)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_model_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_model_view);
 
     return GTK_WIDGET (self->view_ui);
 }
@@ -130,7 +130,7 @@ get_default_zoom_level (void)
 }
 
 static void
-set_captions_from_preferences (NautilusViewIconController *self)
+set_captions_from_preferences (NautilusGridView *self)
 {
     g_auto (GStrv) value = NULL;
     gint n_captions_for_zoom_level;
@@ -161,13 +161,13 @@ set_captions_from_preferences (NautilusViewIconController *self)
 }
 
 static void
-set_zoom_level (NautilusViewIconController *self,
-                guint                       new_level)
+set_zoom_level (NautilusGridView *self,
+                guint             new_level)
 {
     self->zoom_level = new_level;
 
     /* The zoom level may change how many captions are allowed. Update it before
-     * setting the icon size, under the assumption that NautilusViewIconItemUi
+     * setting the icon size, under the assumption that NautilusGridViewItemUi
      * updates captions whenever the icon size is set*/
     set_captions_from_preferences (self);
 
@@ -180,9 +180,9 @@ set_zoom_level (NautilusViewIconController *self,
 static void
 real_restore_standard_zoom_level (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self;
+    NautilusGridView *self;
 
-    self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    self = NAUTILUS_GRID_VIEW (files_view);
     g_action_group_change_action_state (self->action_group,
                                         "zoom-to-level",
                                         g_variant_new_int32 (NAUTILUS_GRID_ZOOM_LEVEL_LARGE));
@@ -191,10 +191,10 @@ real_restore_standard_zoom_level (NautilusFilesView *files_view)
 static gboolean
 real_is_zoom_level_default (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self;
+    NautilusGridView *self;
     guint icon_size;
 
-    self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    self = NAUTILUS_GRID_VIEW (files_view);
     icon_size = get_icon_size_for_zoom_level (self->zoom_level);
 
     return icon_size == NAUTILUS_GRID_ICON_SIZE_LARGE;
@@ -203,7 +203,7 @@ real_is_zoom_level_default (NautilusFilesView *files_view)
 static gboolean
 real_can_zoom_in (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_view);
 
     return self->zoom_level < NAUTILUS_GRID_ZOOM_LEVEL_LARGEST;
 }
@@ -211,7 +211,7 @@ real_can_zoom_in (NautilusFilesView *files_view)
 static gboolean
 real_can_zoom_out (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_view);
 
     return self->zoom_level > NAUTILUS_GRID_ZOOM_LEVEL_SMALL;
 }
@@ -220,7 +220,7 @@ static void
 real_scroll_to_item (NautilusFilesModelView *files_model_view,
                      guint                   position)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_model_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_model_view);
 
     gtk_widget_activate_action (GTK_WIDGET (self->view_ui),
                                 "list.scroll-to-item",
@@ -229,7 +229,7 @@ real_scroll_to_item (NautilusFilesModelView *files_model_view,
 }
 
 static void
-set_click_mode_from_settings (NautilusViewIconController *self)
+set_click_mode_from_settings (NautilusGridView *self)
 {
     int click_policy;
 
@@ -242,13 +242,13 @@ set_click_mode_from_settings (NautilusViewIconController *self)
 static void
 real_click_policy_changed (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (files_view);
     set_click_mode_from_settings (self);
 }
 
 static void
-activate_selection_on_click (NautilusViewIconController *self,
-                             gboolean                    open_in_new_tab)
+activate_selection_on_click (NautilusGridView *self,
+                             gboolean          open_in_new_tab)
 {
     g_autolist (NautilusFile) selection = NULL;
     NautilusOpenFlags flags = 0;
@@ -270,7 +270,7 @@ on_click_pressed (GtkGestureClick *gesture,
                   gdouble          y,
                   gpointer         user_data)
 {
-    NautilusViewIconController *self;
+    NautilusGridView *self;
     GtkWidget *event_widget;
     guint button;
     GdkModifierType modifiers;
@@ -278,7 +278,7 @@ on_click_pressed (GtkGestureClick *gesture,
     gdouble view_x;
     gdouble view_y;
 
-    self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    self = NAUTILUS_GRID_VIEW (user_data);
     event_widget = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
     button = gtk_gesture_single_get_current_button (GTK_GESTURE_SINGLE (gesture));
     modifiers = gtk_event_controller_get_current_event_state (GTK_EVENT_CONTROLLER (gesture));
@@ -288,7 +288,7 @@ on_click_pressed (GtkGestureClick *gesture,
     gtk_widget_translate_coordinates (event_widget, GTK_WIDGET (self),
                                       x, y,
                                       &view_x, &view_y);
-    if (NAUTILUS_IS_VIEW_ICON_ITEM_UI (event_widget))
+    if (NAUTILUS_IS_GRID_VIEW_ITEM_UI (event_widget))
     {
         self->activate_on_release = (self->single_click_mode &&
                                      button == GDK_BUTTON_PRIMARY &&
@@ -308,7 +308,7 @@ on_click_pressed (GtkGestureClick *gesture,
             guint position;
 
             model = nautilus_files_model_view_get_model (NAUTILUS_FILES_MODEL_VIEW (self));
-            item_model = nautilus_view_icon_item_ui_get_model (NAUTILUS_VIEW_ICON_ITEM_UI (event_widget));
+            item_model = nautilus_grid_view_item_ui_get_model (NAUTILUS_GRID_VIEW_ITEM_UI (event_widget));
             position = nautilus_view_model_get_index (model, item_model);
             if (!gtk_selection_model_is_selected (GTK_SELECTION_MODEL (model), position))
             {
@@ -358,7 +358,7 @@ on_click_released (GtkGestureClick *gesture,
                    gdouble          y,
                    gpointer         user_data)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (user_data);
 
     if (self->activate_on_release)
     {
@@ -372,7 +372,7 @@ static void
 on_click_stopped (GtkGestureClick *gesture,
                   gpointer         user_data)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (user_data);
 
     self->activate_on_release = FALSE;
 }
@@ -383,18 +383,18 @@ on_longpress_gesture_pressed_callback (GtkGestureLongPress *gesture,
                                        gdouble              y,
                                        gpointer             user_data)
 {
-    NautilusViewIconController *self;
+    NautilusGridView *self;
     GtkWidget *event_widget;
     gdouble view_x;
     gdouble view_y;
 
-    self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    self = NAUTILUS_GRID_VIEW (user_data);
     event_widget = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
 
     gtk_widget_translate_coordinates (event_widget,
                                       GTK_WIDGET (self),
                                       x, y, &view_x, &view_y);
-    if (NAUTILUS_IS_VIEW_ICON_ITEM_UI (event_widget))
+    if (NAUTILUS_IS_GRID_VIEW_ITEM_UI (event_widget))
     {
         nautilus_files_view_pop_up_selection_context_menu (NAUTILUS_FILES_VIEW (self),
                                                            view_x, view_y);
@@ -411,15 +411,15 @@ on_longpress_gesture_pressed_callback (GtkGestureLongPress *gesture,
 static void
 real_sort_directories_first_changed (NautilusFilesView *files_view)
 {
-    NautilusViewIconController *self;
+    NautilusGridView *self;
     NautilusViewModel *model;
     g_autoptr (GtkCustomSorter) sorter = NULL;
 
-    self = NAUTILUS_VIEW_ICON_CONTROLLER (files_view);
+    self = NAUTILUS_GRID_VIEW (files_view);
     self->directories_first = nautilus_files_view_should_sort_directories_first (NAUTILUS_FILES_VIEW (self));
 
     model = nautilus_files_model_view_get_model (NAUTILUS_FILES_MODEL_VIEW (self));
-    sorter = gtk_custom_sorter_new (nautilus_view_icon_controller_sort, self, NULL);
+    sorter = gtk_custom_sorter_new (nautilus_grid_view_sort, self, NULL);
     nautilus_view_model_set_sorter (model, GTK_SORTER (sorter));
 }
 
@@ -429,7 +429,7 @@ action_sort_order_changed (GSimpleAction *action,
                            gpointer       user_data)
 {
     const gchar *target_name;
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (user_data);
     NautilusViewModel *model;
     g_autoptr (GtkCustomSorter) sorter = NULL;
 
@@ -442,7 +442,7 @@ action_sort_order_changed (GSimpleAction *action,
     g_variant_get (value, "(&sb)", &target_name, &self->reversed);
     self->sort_type = get_sorts_type_from_metadata_text (target_name);
 
-    sorter = gtk_custom_sorter_new (nautilus_view_icon_controller_sort, self, NULL);
+    sorter = gtk_custom_sorter_new (nautilus_grid_view_sort, self, NULL);
     model = nautilus_files_model_view_get_model (NAUTILUS_FILES_MODEL_VIEW (self));
     nautilus_view_model_set_sorter (model, GTK_SORTER (sorter));
     set_directory_sort_metadata (nautilus_files_view_get_directory_as_file (NAUTILUS_FILES_VIEW (self)),
@@ -463,7 +463,7 @@ action_zoom_to_level (GSimpleAction *action,
                       GVariant      *state,
                       gpointer       user_data)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (user_data);
     int zoom_level;
 
     zoom_level = g_variant_get_int32 (state);
@@ -480,11 +480,11 @@ action_zoom_to_level (GSimpleAction *action,
 }
 
 static void
-on_captions_preferences_changed (NautilusViewIconController *self)
+on_captions_preferences_changed (NautilusGridView *self)
 {
     set_captions_from_preferences (self);
 
-    /* Hack: this relies on the assumption that NautilusViewIconItemUi updates
+    /* Hack: this relies on the assumption that NautilusGridViewItemUi updates
      * captions whenever the icon size is set (even if it's the same value). */
     nautilus_files_model_view_set_icon_size (NAUTILUS_FILES_MODEL_VIEW (self),
                                              get_icon_size_for_zoom_level (self->zoom_level));
@@ -493,13 +493,13 @@ on_captions_preferences_changed (NautilusViewIconController *self)
 static void
 dispose (GObject *object)
 {
-    G_OBJECT_CLASS (nautilus_view_icon_controller_parent_class)->dispose (object);
+    G_OBJECT_CLASS (nautilus_grid_view_parent_class)->dispose (object);
 }
 
 static void
 finalize (GObject *object)
 {
-    G_OBJECT_CLASS (nautilus_view_icon_controller_parent_class)->finalize (object);
+    G_OBJECT_CLASS (nautilus_grid_view_parent_class)->finalize (object);
 }
 
 static void
@@ -514,11 +514,11 @@ bind_item_ui (GtkSignalListItemFactory *factory,
     item_model = listitem_get_view_item (listitem);
     g_return_if_fail (item_model != NULL);
 
-    nautilus_view_icon_item_ui_set_model (NAUTILUS_VIEW_ICON_ITEM_UI (item_ui),
+    nautilus_grid_view_item_ui_set_model (NAUTILUS_GRID_VIEW_ITEM_UI (item_ui),
                                           item_model);
     nautilus_view_item_model_set_item_ui (item_model, item_ui);
 
-    if (nautilus_view_icon_item_ui_once (NAUTILUS_VIEW_ICON_ITEM_UI (item_ui)))
+    if (nautilus_grid_view_item_ui_once (NAUTILUS_GRID_VIEW_ITEM_UI (item_ui)))
     {
         GtkWidget *parent;
 
@@ -540,13 +540,13 @@ unbind_item_ui (GtkSignalListItemFactory *factory,
                 GtkListItem              *listitem,
                 gpointer                  user_data)
 {
-    NautilusViewIconItemUi *item_ui;
+    NautilusGridViewItemUi *item_ui;
     NautilusViewItemModel *item_model;
 
-    item_ui = NAUTILUS_VIEW_ICON_ITEM_UI (gtk_list_item_get_child (listitem));
+    item_ui = NAUTILUS_GRID_VIEW_ITEM_UI (gtk_list_item_get_child (listitem));
     item_model = listitem_get_view_item (listitem);
 
-    nautilus_view_icon_item_ui_set_model (item_ui, NULL);
+    nautilus_grid_view_item_ui_set_model (item_ui, NULL);
     /* item may be NULL when row has just been destroyed. */
     if (item_model != NULL)
     {
@@ -559,11 +559,11 @@ setup_item_ui (GtkSignalListItemFactory *factory,
                GtkListItem              *listitem,
                gpointer                  user_data)
 {
-    NautilusViewIconController *self = NAUTILUS_VIEW_ICON_CONTROLLER (user_data);
-    NautilusViewIconItemUi *item_ui;
+    NautilusGridView *self = NAUTILUS_GRID_VIEW (user_data);
+    NautilusGridViewItemUi *item_ui;
     GtkEventController *controller;
 
-    item_ui = nautilus_view_icon_item_ui_new ();
+    item_ui = nautilus_grid_view_item_ui_new ();
     nautilus_view_item_ui_set_caption_attributes (item_ui, self->caption_attributes);
     gtk_list_item_set_child (listitem, GTK_WIDGET (item_ui));
 
@@ -583,7 +583,7 @@ setup_item_ui (GtkSignalListItemFactory *factory,
 }
 
 static GtkGridView *
-create_view_ui (NautilusViewIconController *self)
+create_view_ui (NautilusGridView *self)
 {
     NautilusViewModel *model;
     GtkListItemFactory *factory;
@@ -620,7 +620,7 @@ const GActionEntry view_icon_actions[] =
 };
 
 static void
-nautilus_view_icon_controller_class_init (NautilusViewIconControllerClass *klass)
+nautilus_grid_view_class_init (NautilusGridViewClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
     NautilusFilesViewClass *files_view_class = NAUTILUS_FILES_VIEW_CLASS (klass);
@@ -644,7 +644,7 @@ nautilus_view_icon_controller_class_init (NautilusViewIconControllerClass *klass
 }
 
 static void
-nautilus_view_icon_controller_init (NautilusViewIconController *self)
+nautilus_grid_view_init (NautilusGridView *self)
 {
     GtkWidget *content_widget;
     GtkEventController *controller;
@@ -697,10 +697,10 @@ nautilus_view_icon_controller_init (NautilusViewIconController *self)
                                         "zoom-to-level", g_variant_new_int32 (self->zoom_level));
 }
 
-NautilusViewIconController *
-nautilus_view_icon_controller_new (NautilusWindowSlot *slot)
+NautilusGridView *
+nautilus_grid_view_new (NautilusWindowSlot *slot)
 {
-    return g_object_new (NAUTILUS_TYPE_VIEW_ICON_CONTROLLER,
+    return g_object_new (NAUTILUS_TYPE_GRID_VIEW,
                          "window-slot", slot,
                          NULL);
 }
