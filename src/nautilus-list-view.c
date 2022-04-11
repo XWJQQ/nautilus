@@ -80,9 +80,9 @@ get_icon_size_for_zoom_level (NautilusListZoomLevel zoom_level)
         }
         break;
 
-        case NAUTILUS_LIST_ZOOM_LEVEL_STANDARD:
+        case NAUTILUS_LIST_ZOOM_LEVEL_MEDIUM:
         {
-            return NAUTILUS_LIST_ICON_SIZE_STANDARD;
+            return NAUTILUS_LIST_ICON_SIZE_MEDIUM;
         }
         break;
 
@@ -91,14 +91,8 @@ get_icon_size_for_zoom_level (NautilusListZoomLevel zoom_level)
             return NAUTILUS_LIST_ICON_SIZE_LARGE;
         }
         break;
-
-        case NAUTILUS_LIST_ZOOM_LEVEL_LARGER:
-        {
-            return NAUTILUS_LIST_ICON_SIZE_LARGER;
-        }
-        break;
     }
-    g_return_val_if_reached (NAUTILUS_LIST_ICON_SIZE_STANDARD);
+    g_return_val_if_reached (NAUTILUS_LIST_ICON_SIZE_MEDIUM);
 }
 
 static guint
@@ -1390,7 +1384,7 @@ real_bump_zoom_level (NautilusFilesView *files_view,
     new_level = self->zoom_level + zoom_increment;
 
     if (new_level >= NAUTILUS_LIST_ZOOM_LEVEL_SMALL &&
-        new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGER)
+        new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGE)
     {
         g_action_group_change_action_state (self->action_group,
                                             "zoom-to-level",
@@ -1435,7 +1429,7 @@ real_restore_standard_zoom_level (NautilusFilesView *files_view)
     self = NAUTILUS_LIST_VIEW (files_view);
     g_action_group_change_action_state (self->action_group,
                                         "zoom-to-level",
-                                        g_variant_new_int32 (NAUTILUS_LIST_ZOOM_LEVEL_STANDARD));
+                                        g_variant_new_int32 (NAUTILUS_LIST_ZOOM_LEVEL_MEDIUM));
 }
 
 static gboolean
@@ -1443,7 +1437,7 @@ real_can_zoom_in (NautilusFilesView *files_view)
 {
     NautilusListView *self = NAUTILUS_LIST_VIEW (files_view);
 
-    return self->zoom_level < NAUTILUS_LIST_ZOOM_LEVEL_LARGER;
+    return self->zoom_level < NAUTILUS_LIST_ZOOM_LEVEL_LARGE;
 }
 
 static gboolean
@@ -1463,7 +1457,7 @@ real_is_zoom_level_default (NautilusFilesView *files_view)
     self = NAUTILUS_LIST_VIEW (files_view);
     icon_size = get_icon_size_for_zoom_level (self->zoom_level);
 
-    return icon_size == NAUTILUS_LIST_ICON_SIZE_STANDARD;
+    return icon_size == NAUTILUS_LIST_ICON_SIZE_MEDIUM;
 }
 
 static void
