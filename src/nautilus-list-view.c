@@ -1599,6 +1599,13 @@ on_subdirectory_done_loading (NautilusDirectory *directory,
 
     item = NAUTILUS_VIEW_ITEM_MODEL (gtk_tree_list_row_get_item (row));
     nautilus_view_item_model_set_loading (item, FALSE);
+
+    if (!nautilus_directory_is_not_empty (directory))
+    {
+        /* Collapse to trigger a reassessment of the tree in order to make the
+         * expander disappear. */
+        gtk_tree_list_row_set_expanded (row, FALSE);
+    }
 }
 
 static void
